@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AirDrop Web Host</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script>
+        async function fetchFiles() {
+            try {
+                const response = await fetch('/get_files');
+                const files = await response.json();
+                const list = document.getElementById('file-list');
+                list.innerHTML = '';
+
+                if (files.length === 0) {
+                    list.innerHTML = '<div style="text-align:center; padding: 2rem; color: #94a3b8;">No files received yet.</div>';
+                    return;
+                }
+
+                files.forEach(file => {
+                    const li = document.createElement('div');
+                    li.className = 'file-item';
+                    li.innerHTML = `
+                        <div class="file-info">
+                            <span style="font-size: 1.5rem;">📄</span>
+                            <span title="${file}">${file}</span>
+                            <span class="badge">Received</span>
+                        </div>
+                        <a href="/uploads/${file}" download class="btn btn-primary">Download</a>
+                    `;
+                    list.appendChild(li);
+                });
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        setInterval(fetchFiles, 3000);
+        window.onload = fetchFiles;
+
+        async function handleFileSelect(e) {
+            const files = e.target.files;
+            if (files.length > 0) {
+                const formData = new FormData();
+                formData.append('file', files[0]);
+
+                try {
+                    document.getElementById('upload-status').innerText = 'Uploading...';
+                    const res = await fetch('/set_send_file', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const data = await res.json();
+                    if (data.status === 'success') {
+                        document.getElementById('upload-status').innerText = `Ready to Share: ${data.filename}`;
+                        document.getElementById('upload-status').style.color = '#4ade80';
+                    } else {
+                        document.getElementById('upload-status').innerText = 'Upload Failed';
+                        document.getElementById('upload-status').style.color = '#ef4444';
+                    }
+                } catch (e) {
+                    console.error(e);
+                    document.getElementById('upload-status').innerText = 'Error';
+                }
+            }
+        }
+    </script>
+</head>
+
+<body>
+    <div class="container">
+        <!-- Connect Section -->
+        <div class="card qr-container">
+            <h1>{{ pc_name }}</h1>
+            <p style="color: #94a3b8;">Scan with your phone to connect</p>
+
+            <div class="qr-code">
+                <img src="{{ url_for('static', filename='qr_code.png') }}" alt="QR Code">
+            </div>
+
+            <p style="font-family: monospace; background: rgba(0,0,0,0.2); padding: 0.5rem; border-radius: 0.5rem;">
+                {{ client_url }}
+            </p>
+        </div>
+
+        <!-- Files Section -->
+        <div class="card">
+            <h2>Received Files</h2>
+            <div class="file-list" id="file-list">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+
+        <!-- Send Section -->
+        <div class="card" style="grid-column: span 2;">
+            <h2>Send to Phone</h2>
+            <div class="drop-zone" onclick="document.getElementById('file-input').click()">
+                <p style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem;">Click to Select File</p>
+                <p style="color: #94a3b8; font-size: 0.875rem;">PDF files recommended</p>
+                <input type="file" id="file-input" style="display: none;" onchange="handleFileSelect(event)">
+            </div>
+            <p id="upload-status" style="margin-top: 1rem; text-align: center; font-weight: 500;"></p>
+        </div>
+    </div>
+</body>
+
+</html>

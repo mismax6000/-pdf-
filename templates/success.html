@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Успех! ❤️</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Roboto:wght@300;400;700&display=swap"
+        rel="stylesheet">
+    <meta http-equiv="refresh" content="5;url=/">
+</head>
+
+<body>
+    <div class="container">
+        <div class="card success-card">
+            <div class="icon-large">🎉</div>
+            <h1>Ура! Файл получен!</h1>
+            <p>Файл <strong>{{ filename }}</strong> успешно прилетел на компьютер.</p>
+            <p>Готов принять следующий...</p>
+            <a href="/" class="btn secondary">Отправить еще один ❤️</a>
+        </div>
+    </div>
+</body>
+
+</html>

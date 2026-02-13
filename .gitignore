@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+dist/
+build/
+*.spec
+received_pdfs/
+uploads/
+scan_me.png
+config.json
+.vscode/

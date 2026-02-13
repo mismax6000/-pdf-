@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AirDrop Client</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script>
+        async function checkDownload() {
+            try {
+                const response = await fetch('/check_download');
+                const data = await response.json();
+
+                const dlSection = document.getElementById('download-section');
+                const dlBtn = document.getElementById('dl-btn');
+                const dlName = document.getElementById('dl-name');
+
+                if (data.status === 'available') {
+                    dlSection.style.display = 'block';
+                    dlName.innerText = data.filename;
+                    dlBtn.href = '/download_shared';
+                } else {
+                    dlSection.style.display = 'none';
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+        setInterval(checkDownload, 2000);
+
+        async function uploadFile() {
+            const input = document.getElementById('file-upload');
+            const status = document.getElementById('upload-status');
+
+            if (input.files.length === 0) return;
+
+            const file = input.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+
+            status.innerText = 'Sending...';
+            status.className = 'pulse';
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    status.innerText = 'Sent Successfully! ✅';
+                    status.className = 'badge';
+                    status.style.backgroundColor = 'rgba(34, 197, 94, 0.2)';
+                    status.style.color = '#4ade80';
+                    input.value = ''; // Clear
+                } else {
+                    status.innerText = 'Error: ' + result.message;
+                    status.style.color = '#ef4444';
+                }
+            } catch (e) {
+                status.innerText = 'Connection Failed ❌';
+            }
+        }
+    </script>
+</head>
+
+<body>
+    <div class="container"
+        style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh;">
+
+        <!-- Header -->
+        <div style="text-align: center; margin-bottom: 2rem;">
+            <h1>Connect to {{ pc_name }}</h1>
+            <p style="color: #94a3b8;">Send or Receive files</p>
+        </div>
+
+        <!-- Upload Card -->
+        <div class="card" style="width: 100%; max-width: 400px; text-align: center;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">📤</div>
+            <h2>Send File to PC</h2>
+
+            <input type="file" id="file-upload" style="display: none;" onchange="uploadFile()">
+            <button class="btn btn-primary" onclick="document.getElementById('file-upload').click()"
+                style="width: 100%; padding: 1rem; font-size: 1.1rem; margin-top: 1rem;">
+                Select File
+            </button>
+            <p id="upload-status" style="margin-top: 1rem; font-weight: 500;"></p>
+        </div>
+
+        <!-- Download Card (Hidden by default) -->
+        <div id="download-section" class="card pulse"
+            style="width: 100%; max-width: 400px; text-align: center; margin-top: 2rem; display: none; border-color: #3b82f6;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">📥</div>
+            <h2>File Incoming!</h2>
+            <p id="dl-name" style="font-weight: bold; margin-bottom: 1rem;"></p>
+            <a id="dl-btn" href="#" class="btn btn-primary"
+                style="width: 100%; padding: 1rem; background-color: #22c55e;">
+                Download
+            </a>
+        </div>
+
+    </div>
+</body>
+
+</html>

@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AirDrop PDF</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f2f2f7;
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .radar-container {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .ripple {
+            position: absolute;
+            border-radius: 50%;
+            border: 1px solid #007aff;
+            width: 100px;
+            height: 100px;
+            animation: ripple 3s infinite linear;
+            opacity: 0;
+        }
+
+        .ripple:nth-child(1) {
+            animation-delay: 0s;
+        }
+
+        .ripple:nth-child(2) {
+            animation-delay: 1s;
+        }
+
+        .ripple:nth-child(3) {
+            animation-delay: 2s;
+        }
+
+        @keyframes ripple {
+            0% {
+                width: 100px;
+                height: 100px;
+                opacity: 0.8;
+                border-width: 2px;
+            }
+
+            100% {
+                width: 300px;
+                height: 300px;
+                opacity: 0;
+                border-width: 0px;
+            }
+        }
+
+        .avatar {
+            width: 100px;
+            height: 100px;
+            background: linear-gradient(135deg, #007aff, #5ac8fa);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 40px;
+            color: white;
+            box-shadow: 0 10px 20px rgba(0, 122, 255, 0.3);
+            z-index: 10;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .avatar:active {
+            transform: scale(0.95);
+        }
+
+        .device-name {
+            margin-top: 20px;
+            font-weight: 600;
+            font-size: 18px;
+            color: #1c1c1e;
+        }
+
+        .status {
+            margin-top: 8px;
+            font-size: 14px;
+            color: #8e8e93;
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        .sending-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+
+        .progress-circle {
+            width: 60px;
+            height: 60px;
+            border: 4px solid #fff;
+            border-top: 4px solid #007aff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .success-checkmark {
+            display: none;
+            color: white;
+            font-size: 50px;
+        }
+
+        /* Language Selector Styles */
+        .lang-selector {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 50;
+        }
+
+        .lang-selector select {
+            padding: 8px 12px;
+            border-radius: 20px;
+            border: 1px solid #d1d1d6;
+            background: rgba(255, 255, 255, 0.8);
+            font-size: 14px;
+            outline: none;
+            backdrop-filter: blur(10px);
+            -webkit-appearance: none;
+            appearance: none;
+            color: #007aff;
+            font-weight: 500;
+            text-align: center;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="lang-selector">
+        <select id="language-select" onchange="changeLanguage(this.value)">
+            <option value="ru">Русский 🇷🇺</option>
+            <option value="en">English 🇺🇸</option>
+            <option value="es">Español 🇪🇸</option>
+            <option value="fr">Français 🇫🇷</option>
+            <option value="de">Deutsch 🇩🇪</option>
+            <option value="zh">中文 🇨🇳</option>
+            <option value="ar">العربية 🇸🇦</option>
+            <option value="hi">हिन्दी 🇮🇳</option>
+            <option value="he">עברית 🇮🇱</option>
+            <option value="pl">Polski 🇵🇱</option>
+            <option value="uk">Українська 🇺🇦</option>
+        </select>
+    </div>
+
+    <div class="radar-container" onclick="document.getElementById('file-input').click()">
+        <div class="ripple"></div>
+        <div class="ripple"></div>
+        <div class="ripple"></div>
+        <div class="avatar">
+            💻
+        </div>
+    </div>
+
+    <div class="device-name">{{ pc_name }}</div>
+    <div class="status" id="status-msg">Нажми, чтобы отправить PDF</div>
+
+    <form id="upload-form">
+        <input type="file" id="file-input" name="file" accept=".pdf">
+    </form>
+
+    <div class="sending-overlay" id="overlay">
+        <div class="progress-circle" id="spinner"></div>
+        <div class="success-checkmark" id="checkmark">✓</div>
+        <div style="color: white; margin-top: 20px; font-weight: 500;" id="status-text">Отправка...</div>
+    </div>
+
+    <!-- Download Overlay -->
+    <div class="sending-overlay" id="download-overlay" style="background: rgba(0,0,0,0.8);">
+        <div style="font-size: 60px; margin-bottom: 20px;">🎁</div>
+        <div style="color: white; font-size: 20px; font-weight: bold; margin-bottom: 20px;" id="dl-filename">File.pdf
+        </div>
+        <a id="dl-button" href="#" class="btn"
+            style="background-color: #ff6b6b; color: white; padding: 15px 40px; border-radius: 30px; text-decoration: none; font-size: 18px; font-weight: bold;">Скачать
+            PDF</a>
+        <div style="color: #aaa; margin-top: 30px; cursor: pointer; border: 1px solid #aaa; padding: 5px 15px; border-radius: 15px;"
+            onclick="closeDlOverlay()">Закрыть</div>
+    </div>
+
+    <script>
+        const translations = {
+            ru: {
+                status: "Нажми, чтобы отправить PDF",
+                sending: "Отправка...",
+                success: "Отправлено!",
+                error: "Ошибка: ",
+                connError: "Ошибка соединения",
+                drop: "Перетащи файл сюда",
+                receiving: "Вам отправили файл!",
+                download: "Скачать PDF 📥",
+                close: "Закрыть"
+            },
+            en: {
+                status: "Tap to send PDF",
+                sending: "Sending...",
+                success: "Sent!",
+                error: "Error: ",
+                connError: "Connection error",
+                drop: "Drop file here",
+                receiving: "File shared with you!",
+                download: "Download PDF 📥",
+                close: "Close"
+            },
+            // Fallbacks for other languages to English for new keys
+        };
+
+        // Helper to get translation
+        function getT(lang) {
+            let t = translations[lang];
+            if (!t) {
+                // Try to merge missing keys from English
+                // For simplicity, just fallback entire object to EN if lang missing
+                // Or create a proxy if needed. 
+                // Let's just manually populate major ones or fallback.
+                t = translations['en'];
+            }
+            return t;
+        }
+
+        const fileInput = document.getElementById('file-input');
+        const overlay = document.getElementById('overlay');
+        const dlOverlay = document.getElementById('download-overlay');
+        const spinner = document.getElementById('spinner');
+        const checkmark = document.getElementById('checkmark');
+        const statusText = document.getElementById('status-text');
+        const statusMsg = document.getElementById('status-msg');
+        const langSelect = document.getElementById('language-select');
+        const dlFilename = document.getElementById('dl-filename');
+        const dlButton = document.getElementById('dl-button');
+
+        // Memory: Load saved language
+        const savedLang = localStorage.getItem('user_lang') || 'ru';
+        langSelect.value = savedLang;
+        updateTexts(savedLang);
+
+        function changeLanguage(lang) {
+            localStorage.setItem('user_lang', lang);
+            updateTexts(lang);
+        }
+
+        function updateTexts(lang) {
+            const t = translations[lang] || translations['en'];
+            statusMsg.innerText = t.status;
+            dlButton.innerText = t.download || "Download";
+        }
+
+        function closeDlOverlay() {
+            dlOverlay.style.display = 'none';
+        }
+
+        // Check for downloads efficiently
+        let isDlOverlayOpen = false;
+
+        setInterval(async () => {
+            try {
+                const res = await fetch('/check_download');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.status === 'available') {
+                        // Only show if not already shown (or if file changed)
+                        if (!isDlOverlayOpen) {
+                            dlFilename.textContent = data.filename;
+                            dlButton.href = '/download';
+                            dlOverlay.style.display = 'flex';
+                            isDlOverlayOpen = true;
+
+                            // Try vibrate
+                            if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+                        }
+                    } else {
+                        isDlOverlayOpen = false;
+                    }
+                }
+            } catch (e) {
+                // Silent fail
+            }
+        }, 3000);
+
+        fileInput.addEventListener('change', async function (e) {
+            if (this.files.length === 0) return;
+
+            const lang = langSelect.value;
+            const t = translations[lang] || translations['en'];
+
+            const file = this.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+
+            // Show overlay
+            overlay.style.display = 'flex';
+            spinner.style.display = 'block';
+            checkmark.style.display = 'none';
+            statusText.innerText = t.sending;
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    spinner.style.display = 'none';
+                    checkmark.style.display = 'block';
+                    statusText.innerText = t.success;
+                    setTimeout(() => {
+                        overlay.style.display = 'none';
+                        fileInput.value = ''; // Reset
+                    }, 1500);
+                } else {
+                    statusText.innerText = t.error + result.message;
+                    setTimeout(() => {
+                        overlay.style.display = 'none';
+                    }, 2000);
+                }
+            } catch (error) {
+                spinner.style.display = 'none';
+                statusText.innerText = t.connError;
+                setTimeout(() => {
+                    overlay.style.display = 'none';
+                }, 2000);
+            }
+        });
+    </script>
+</body>
+
+</html>

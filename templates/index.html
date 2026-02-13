@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Отправь PDF с Любовью ❤️</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="header">
+                <h1>Привет! ❤️</h1>
+                <p>Я готов принять твой PDF файл с любовью.</p>
+            </div>
+            
+            <form action="/upload" method="post" enctype="multipart/form-data" id="upload-form">
+                <div class="upload-area" id="drop-zone">
+                    <span class="icon">📄</span>
+                    <p>Нажми сюда или перетащи файл</p>
+                    <input type="file" name="file" id="file" accept=".pdf" required>
+                </div>
+                <div id="file-name" class="file-name"></div>
+                <button type="submit" class="btn">Отправить на ПК 🚀</button>
+            </form>
+            
+            {% with messages = get_flashed_messages() %}
+              {% if messages %}
+                <ul class="flashes">
+                {% for message in messages %}
+                  <li>{{ message }}</li>
+                {% endfor %}
+                </ul>
+              {% endif %}
+            {% endwith %}
+        </div>
+        
+        <footer>
+            Сделано с 💖 на Python
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
