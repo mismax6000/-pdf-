@@ -38,7 +38,11 @@ TRANSLATIONS = {
         "send": "Отправить",
         "sent_success": "Успешно отправлено!",
         "sent_error": "Ошибка отправки: {}",
-        "scanning": "Поиск устройств..."
+        "scanning": "Поиск устройств...",
+        "btn_usb": "Передать по USB",
+        "usb_no_devices": "Устройства USB не найдены",
+        "usb_copying": "Копирование по USB...",
+        "usb_success": "Файл скопирован на телефон!"
     },
     "en": {
         "title": "With Love PDF Receiver",
@@ -64,7 +68,11 @@ TRANSLATIONS = {
         "send": "Send",
         "sent_success": "Sent successfully!",
         "sent_error": "Send error: {}",
-        "scanning": "Scanning for devices..."
+        "scanning": "Scanning for devices...",
+        "btn_usb": "USB Transfer",
+        "usb_no_devices": "No USB devices found",
+        "usb_copying": "Copying via USB...",
+        "usb_success": "File copied to phone!"
     },
     "es": {
         "title": "Receptor PDF Con Amor",
@@ -204,6 +212,17 @@ class AirDropApp(ctk.CTk):
             hover_color="#2563eb"
         )
         self.send_pc_btn.pack(side="left", padx=10)
+
+        # USB Send Button
+        self.usb_btn = ctk.CTkButton(
+            self.btns_frame,
+            text=self.t.get("btn_usb", "USB Transfer"),
+            command=self.open_usb_transfer,
+            width=150,
+            fg_color="#10b981", # Greenish
+            hover_color="#059669"
+        )
+        self.usb_btn.pack(side="left", padx=10)
 
         self.files_frame = ctk.CTkScrollableFrame(self.main_frame, height=150, label_text=self.t["recent"])
         self.files_frame.grid(row=4, column=0, sticky="ew", padx=20, pady=20)
@@ -362,6 +381,53 @@ class AirDropApp(ctk.CTk):
         
         self.after(3000, lambda: self.header_label.configure(text=self.t["ready"], text_color=("black", "white")))
 
+    def open_usb_transfer(self):
+        file_path = ctk.filedialog.askopenfilename(filetypes=[("PDF Files", "*.pdf")])
+        if not file_path:
+            return
+            
+        self.header_label.configure(text=self.t.get("usb_copying", "Copying via USB..."), text_color="yellow")
+        
+        # Run PS script in thread
+        threading.Thread(target=self._run_usb_transfer, args=(file_path,)).start()
+
+    def _run_usb_transfer(self, file_path):
+        import subprocess
+        # PowerShell script to find MTP device and copy file
+        # We try to find first portable device and then look for internal storage / download
+        ps_script = f"""
+        $shell = New-Object -ComObject Shell.Application
+        $thisPC = $shell.NameSpace(17) 
+        $phone = $thisPC.Items() | Where-Object {{ $_.Type -match "Portable Device" }} | Select-Object -First 1
+        
+        if ($phone) {{
+            $storage = $phone.GetFolder.Items() | Where-Object {{ $_.Name -match "Storage|Memory|Phone|Память" }} | Select-Object -First 1
+            if ($storage) {{
+                $download = $storage.GetFolder.Items() | Where-Object {{ $_.Name -match "Download|Загрузки" }} | Select-Object -First 1
+                if ($download) {{
+                    $destPath = $download.Path
+                    Copy-Item "{file_path}" -Destination $destPath -Force
+                    Write-Output "SUCCESS"
+                }} else {{ Write-Output "ERR_NO_DOWNLOAD" }}
+            }} else {{ Write-Output "ERR_NO_STORAGE" }}
+        }} else {{ Write-Output "ERR_NO_PHONE" }}
+        """
+        
+        try:
+            result = subprocess.run(["powershell", "-Command", ps_script], capture_output=True, text=True, check=True)
+            output = result.stdout.strip()
+            
+            if "SUCCESS" in output:
+                self.header_label.configure(text=self.t.get("usb_success", "Success!"), text_color="#4ade80")
+            elif "ERR_NO_PHONE" in output:
+                self.header_label.configure(text=self.t.get("usb_no_devices", "No USB Devices Found"), text_color="red")
+            else:
+                self.header_label.configure(text=f"USB Error: {output}", text_color="red")
+        except Exception as e:
+            self.header_label.configure(text=f"Fail: {str(e)}", text_color="red")
+            
+        self.after(3000, lambda: self.header_label.configure(text=self.t["ready"], text_color=("black", "white")))
+
     def get_translation(self, lang):
         base = TRANSLATIONS.get("en").copy()
         target = TRANSLATIONS.get(lang, {})
@@ -386,6 +452,7 @@ class AirDropApp(ctk.CTk):
         self.copy_btn.configure(text=self.t.get("btn_copy", "Copy Code"))
         self.send_btn.configure(text=self.t.get("btn_send", "Send to Phone"))
         self.send_pc_btn.configure(text=self.t.get("btn_send_pc", "Send to PC"))
+        self.usb_btn.configure(text=self.t.get("btn_usb", "USB Transfer"))
         self.generate_qr() 
 
     def get_wifi_ssid(self):
